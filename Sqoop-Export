@@ -1,0 +1,81 @@
+Sqoop-Export
+
+
+Hive Query
+
+CREATE TABLE daily_revenue as
+select o.order_date, sum(oi.order_item_subtotal) daily_revenue
+from orders as o join order_items as oi on
+o.order_id = oi.order_item_order_id
+where o.order_date like '2013-07%'
+group by o.order_date limit 10;
+
+Mysql - table (Target)
+create table retail_revenue(
+order_date varchar(30),
+revenue float 
+);
+
+// Sqoop Export
+
+sqoop export \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--export-dir hdfs://quickstart.cloudera:8020/user/hive/warehouse/learn.db/daily_revenue \
+--input-fields-terminated-by "\001" \
+--table retail_revenue
+
+
+
+Mysql - table (Target - 2)
+create table retail_revenue_new(
+revenue float ,
+order_date varchar(30),
+description varchar(200)
+);
+
+//Sqoop Export - Column mapping
+
+sqoop export \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--export-dir hdfs://quickstart.cloudera:8020/user/hive/warehouse/learn.db/daily_revenue \
+--input-fields-terminated-by "\001" \
+--table retail_revenue_new \
+--columns order_date,revenue
+
+//Sqoop Export - Update & Upsert
+
+sqoop export \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--export-dir \
+--input-fields-terminated-by "\001" \
+--table \
+--update-key \
+--update-mode allowinsert \
+
+
+//sqoop Export - Stage tables
+
+
+--staging-table 
+--clear-staging-table
+
+Hive table -> My Sql Stage Table -> Target Table - Happy Path
+If Loading into target table fails from staging table, whole batch will be failed.
+
+
+
+
+
+
+
+
+
+
+
+

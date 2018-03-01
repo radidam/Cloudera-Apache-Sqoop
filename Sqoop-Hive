@@ -1,0 +1,169 @@
+Show databases;
+
+Create database <db_name>;
+
+use <db_name> ;
+
+
+// Sqoop import - Hive Appends to Existing / Creates New
+
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table order_items \
+--hive-import \
+--hive-database Learn \
+--hive-table order_items \
+--num-mappers 3
+
+hive>use <db_name>;
+hive>describe formatted <Table_name>; // Get Hive Table structure & HDFS Location.
+
+
+
+// Sqoop import - Hive Overwrites 
+
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table order_items \
+--num-mappers 3 \
+--hive-import \
+--hive-database Learn \
+--hive-table order_items \
+--hive-overwrite
+
+
+// Sqoop import - Fails, if Hive table already exists 
+
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table order_items \
+--num-mappers 3 \
+--hive-import \
+--hive-database Learn \
+--hive-table order_items \
+--create-hive-table
+
+
+FAILED: Execution Error, return code 1 from org.apache.hadoop.hive.ql.exec.DDLTask. AlreadyExistsException(message:Table order_items already exists)
+
+
+
+// Sqoop import - Hive Import All tables
+
+sqoop import-all-tables \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--num-mappers 5 \
+--warehouse-dir /user/cloudera/sqoop_import/retail_db_Hive/ \
+--autoreset-to-one-mapper \
+--hive-import \
+--hive-database learn \
+--hive-overwrite
+
+
+
+//Hive - Create Hive tables as testfile format
+
+create table learn_create (
+Id Int,
+Name String )
+Row format delimited fields terminated by ','
+stored as textFile;
+
+
+
+create table learn_orders (
+order_id int,
+order_date string ,
+order_customer_id int,
+order_status string
+)
+row format delimited fields terminated by ','
+stored as textFile;
+
+
+
+
+//Loading data from local OS to Hive table
+
+//Append
+load data local inpath '/home/cloudera/workspace/learning_data/data-master/retail_db/orders' into table learn.learn_orders
+
+
+// Truncate + Load
+load data local  inpath '/home/cloudera/workspace/learning_data/data-master/retail_db/orders' overwrite into table learn.learn_orders  
+
+//Loading data from HDFS to Hive table
+load data    inpath '<HDFS Location>' into table learn.learn_ord
+
+
+
+
+create table learn_order_items (
+order_item_id int,
+order_item_order_id int,
+order_item_product_id int,
+order_item_quantity int,
+order_item_subtotal float,
+order_item_product_price float 
+)
+row format delimited fields terminated by ','
+stored as textFile;
+
+// Truncate + Load
+load data local  inpath '/home/cloudera/workspace/learning_data/data-master/retail_db/order_items' overwrite into table learn.learn_order_items
+
+
+
+
+
+
+//Hive - Create Hive tables as ORC File format
+
+
+create table learn_orders_orc (
+order_id int,
+order_date string ,
+order_customer_id int,
+order_status string
+)
+stored as orc;
+
+
+// Load Data into Orc File : From Textfile format data
+
+insert into learn_orders_orc 
+Select * from learn_orders
+
+
+create table learn_order_items_orc (
+order_item_id int,
+order_item_order_id int,
+order_item_product_id int,
+order_item_quantity int,
+order_item_subtotal float,
+order_item_product_price float 
+) 
+stored as orc;
+
+insert into learn_order_items_orc
+select * from learn_order_items;
+
+
+
+
+
+
+
+
+
+
+
+

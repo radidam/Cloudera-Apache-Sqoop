@@ -1,0 +1,262 @@
+
+----------------------------------------------------------
+----------------------------------------------------------
+		Hadoop - Commands
+----------------------------------------------------------
+----------------------------------------------------------
+
+// Check Hadoop location contents
+hadoop  fs -ls /user/cloudera/sqoop_import/retail_db/order_items
+
+// Delete Hadoop location  
+hadoop  fs -rm -R  /user/cloudera/sqoop_import/retail_db/order_items
+
+// Check one of the file contents
+hadoop  fs -tail  sqoop_import/retail_db/order_items/part-m-00003
+
+
+----------------------------------------------------------
+----------------------------------------------------------
+		Sqoop
+----------------------------------------------------------
+----------------------------------------------------------
+
+// Sqoop Help
+sqoop help
+
+sqoop help eval
+
+sqoop help import
+
+file size: hadoop fs -du -s -h /user.... - Location
+
+
+// Host details to be used in the connection string 
+hostname -f
+
+
+
+// Check & Validate conection and Get database available (for the user) 
+sqoop list-databases \
+--connect jdbc:mysql://quickstart.cloudera:3306 \
+--username retail_dba \
+--password cloudera
+ 
+
+sqoop eval \
+--connect jdbc:mysql://quickstart.cloudera \
+--username retail_dba \
+--password cloudera \
+--query "show databases;"
+
+
+
+// Get tables in a database , executing query
+ 
+sqoop eval \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--query "show tables;"
+
+// Sample SQL Query, using eval
+// Eval can take in any Valid SQL command (DDL, DML , etc), based on
+// the permissions used in conection strig
+
+sqoop eval \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--query "Select * from order_items limit 10;"
+
+// Sqoop Import to Target dir - Directory should be empty
+
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table order_items \
+--warehouse-dir /user/cloudera/sqoop_import/retail_db/
+
+// Check Hadoop location contents
+hadoop  fs -ls /user/cloudera/sqoop_import/retail_db/order_items
+
+// Delete Hadoop location - Target Dir
+hadoop  fs -rm -R  /user/cloudera/sqoop_import/retail_db/order_items
+
+// Check one of the file contents
+hadoop  fs -tail  sqoop_import/retail_db/order_items/part-m-00003
+
+
+// Sqoop Import to Target dir ( Empty Directory ) - With Single thread (One file)
+
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--num-mappers 1 \
+--table order_items \
+--warehouse-dir /user/cloudera/sqoop_import/retail_db/ 
+
+
+// Sqoop Import to Target - Delete target directory, if exists (Truncate and Load - Full load)
+
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table order_items \
+--target-dir /user/cloudera/sqoop_import/retail_db/order_items \
+--delete-target-dir
+--num-mappers 3
+
+
+//sqoop import - Append Data to Existing directory
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table order_items \
+--num-mappers 3 \
+--target-dir /user/cloudera/sqoop_import/retail_db/order_items \
+--append
+
+// see hadoop files 
+hadoop fs -ls /user/cloudera/sqoop_import/retail_db/order_items
+
+// Record Count in Hadoop file
+hadoop fs -cat /user/cloudera/sqoop_import/retail_db/order_items/* |wc -l
+
+// see data in a particular hadoop file
+hadoop fs -tail  /user/cloudera/sqoop_import/retail_db/order_items
+
+
+// See data in files in a particular location , contatinating data from all files 
+hadoop fs -cat /user/cloudera/sqoop_import/retail_db/order_items
+
+
+//Sqoop Import to warehouse-dir (Creates sub folders ~ table name)
+
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--num-mappers 4 \
+--table order_items \
+--warehouse-dir /user/cloudera/sqoop_import/retail_db
+
+
+
+//sqoop import - Parallel read & load , with No primary Key on table
+//--split-by <column name>, used to determine min and max logic to spli data for parallel processing
+
+// Things to remember 
+	- Column should be indexed
+	- Data in table column should be evenly distributed (sparse)
+	     , else data will be into one file
+	- Shouldn't have null values
+ 
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table order_items_raw \
+--split-by order_item_order_id \
+--num-mappers 3 \
+--target-dir /user/cloudera/sqoop_import/retail_db/order_items \
+--delete-target-dir
+
+
+//Sqoop import - split-by , on a non numeric field (Truncate and load)
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table orders \
+--split-by order_status \
+--num-mappers 3 \
+--target-dir /user/cloudera/sqoop_import/retail_db/orders \
+--delete-target-dir
+
+
+// Sqoop Import, auto reset mappers to 1 , --autoreset-to-one-mapper
+// If PK is available, it uses num-mappers, else will set the mappers to 1 
+
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table order_items \
+--num-mappers 3 \
+--target-dir /user/cloudera/sqoop_import/retail_db/order_items \
+--delete-target-dir \
+--autoreset-to-one-mapper
+
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table order_items_raw \
+--num-mappers 3 \
+--target-dir /user/cloudera/sqoop_import/retail_db/order_items \
+--delete-target-dir \
+--autoreset-to-one-mapper
+
+
+
+// Sqoop import - File Formats
+--as-textfile (Plain text)
+--as-avrodatafile (Binary Json)
+--as-parquetfile (Biary Columar File)
+--as-sequencefile (Hadoop - Binary)
+
+// Default -- as-textfile
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table orders \
+--num-mappers 3 \
+--split-by order_status \
+--target-dir /user/cloudera/sqoop_import/retail_db/orders \
+--delete-target-dir \
+--as-textfile
+
+// Binary Columnar -- as-parquetfile
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table orders \
+--num-mappers 3 \
+--split-by order_status \
+--target-dir /user/cloudera/sqoop_import/retail_db/orders \
+--delete-target-dir \
+--as-sequencefile
+
+// Binary Hadoop -- as-sequencefile
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table orders \
+--num-mappers 3 \
+--split-by order_status \
+--target-dir /user/cloudera/sqoop_import/retail_db/orders \
+--delete-target-dir \
+--as-parquetfile
+
+
+// Binary Json -- as-avrodatafile
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table orders \
+--num-mappers 3 \
+--split-by order_status \
+--target-dir /user/cloudera/sqoop_import/retail_db/orders \
+--delete-target-dir \
+--as-avrodatafile
+
+

@@ -1,0 +1,230 @@
+----------------------------------------------------------
+----------------------------------------------------------
+		Sqoop Advanced
+----------------------------------------------------------
+----------------------------------------------------------
+
+
+// Sqoop Help
+sqoop help
+
+sqoop help eval
+
+sqoop help import
+
+file size: hadoop fs -du -s -h /user.... - Location
+
+
+// Host details to be used in the connection string 
+hostname -f
+
+// Sqoop Import - Compression Techniques
+// -z , --compress - Enables Compression
+// --compression-codec <> - Compression Algorithm
+
+
+//Default Compression
+
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table orders \
+--num-mappers 3 \
+--split-by order_status \
+--target-dir /user/cloudera/sqoop_import/retail_db/orders \
+--delete-target-dir \
+--compress
+
+//Compression codes available 
+cd /etc/hadoop/conf/core-site.xml
+
+
+//Snappy Compression
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table orders \
+--num-mappers 3 \
+--split-by order_status \
+--target-dir /user/cloudera/sqoop_import/retail_db/orders \
+--append \
+--compress \
+--compression-codec org.apache.hadoop.io.compress.SnappyCodec
+
+
+
+//Sqoop import - Boundry Query
+// This determines the Min and Max valuws in the SQL to extract data.
+
+ sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table order_items \
+--boundary-query ' Select min(order_item_id), max(order_item_id) from order_items where order_item_id > 99999' \
+--num-mappers 3 \
+--target-dir /user/cloudera/sqoop_import/retail_db/order_items \
+--delete-target-dir \
+--as-textfile
+
+ sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table order_items \
+--boundary-query ' Select  1, 172198' \
+--num-mappers 3 \
+--target-dir /user/cloudera/sqoop_import/retail_db/order_items \
+--delete-target-dir \
+--as-textfile
+
+
+
+// Sqoop Import - Specific columns in a table
+ sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table order_items \
+--columns order_item_id,order_item_subtotal \
+--boundary-query ' Select  1, 172198' \
+--num-mappers 3 \
+--target-dir /user/cloudera/sqoop_import/retail_db/order_items \
+--delete-target-dir \
+--as-textfile
+
+
+
+// Sqoop Import - Specific SQL query
+ sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--split-by order_item_id \
+--num-mappers 3 \
+--query "select * from order_items where 1=1 and \$CONDITIONS  limit 999 "  \
+--target-dir /user/cloudera/sqoop_import/retail_db/order_items \
+--delete-target-dir \
+--as-textfile
+
+
+
+Source Table changes
+
+mysql:  alter table order_items_raw modify order_item_product_id int null;
+mysql:  update order_items_raw SET  order_item_product_id = NULL  where order_item_id <100 and order_item_id%2 = 0 and order_item_id%3 = 0  ;
+mysql:  select *  from order_items_raw where order_item_product_id is  NULL ;
+
+
+
+// Sqoop import - Null Handling
+
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--query "select * from order_items_raw where order_item_id < 100 and \$CONDITIONS " \
+--num-mappers 3 \
+--split-by order_item_id \
+--null-string " " \
+--null-non-string -1 \
+--target-dir /user/cloudera/sqoop_import/retail_db/query \
+--delete-target-dir \
+--as-textfile
+
+// Sqoop import -  Delimitors - Pipe delimitor
+
+
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--query "select * from order_items_raw where order_item_id < 100 and \$CONDITIONS " \
+--num-mappers 3 \
+--split-by order_item_id \
+--null-string " " \
+--null-non-string -1 \
+--target-dir /user/cloudera/sqoop_import/retail_db/query \
+--delete-target-dir \
+--as-textfile \
+--fields-terminated-by "|" \
+--enclosed-by '\"'
+
+
+
+//Sqoop import - Incremental Load
+
+
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--query "select * from order_items_raw where order_item_id < 100 and \$CONDITIONS " \
+--num-mappers 3 \
+--split-by order_item_id \
+--null-string " " \
+--null-non-string -1 \
+--target-dir /user/cloudera/sqoop_import/retail_db/query \
+--append \
+--as-textfile \
+--fields-terminated-by "|"
+
+//using where clause
+
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table order_items_raw \
+--where 'order_item_id >= 100 and order_item_id < 150' \
+--num-mappers 3 \
+--split-by order_item_id \
+--null-string " " \
+--null-non-string -1 \
+--target-dir /user/cloudera/sqoop_import/retail_db/query \
+--append \
+--as-textfile \
+--fields-terminated-by "|"
+
+
+// Sqoop official Incremental approach
+
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table order_items_raw \
+--check-column order_item_id \
+--incremental append \
+--last-value 150 \
+--num-mappers 3 \
+--split-by order_item_id \
+--null-string " " \
+--null-non-string -1 \
+--enclosed-by '\"' \
+--fields-terminated-by "\t" \
+--target-dir /user/cloudera/sqoop_import/retail_db/query \
+--append \
+--as-textfile 
+
+
+
+// Sqoop import - Import All tables
+
+sqoop import-all-tables \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--num-mappers 5 \
+--warehouse-dir /user/cloudera/sqoop_import/retail_db/ \
+--autoreset-to-one-mapper 
+
+
+
+
+
+
+
+
